@@ -1,10 +1,16 @@
 <?php
+
 namespace developit\jcrop;
-use developit\jcrop\Asset;
+
 use yii;
 use yii\base\InvalidConfigException;
 use yii\helpers\Json;
 use yii\widgets\InputWidget;
+
+/**
+ * Class Jcrop
+ * @package developit\jcrop
+ */
 class Jcrop extends InputWidget
 {
     public $uploadParameter = 'file';
@@ -18,6 +24,7 @@ class Jcrop extends InputWidget
     public $cropAreaHeight = '300px';
     public $extensions = 'jpeg, jpg, png, gif';
     public $onCompleteJcrop;
+
     /**
      * @inheritdoc
      */
@@ -31,6 +38,7 @@ class Jcrop extends InputWidget
             $this->uploadUrl = rtrim(Yii::getAlias($this->uploadUrl), '/') . '/';
         }
     }
+
     /**
      * @inheritdoc
      */
@@ -38,10 +46,11 @@ class Jcrop extends InputWidget
     {
         $this->registerClientAssets();
         return $this->render('widget', [
-            'model' => $this->model,
+            'model'  => $this->model,
             'widget' => $this
         ]);
     }
+
     /**
      * Register widget asset.
      */
@@ -50,21 +59,23 @@ class Jcrop extends InputWidget
         $view = $this->getView();
         Asset::register($view);
         $settings = [
-            'url' => $this->uploadUrl,
-            'name' => $this->uploadParameter,
-            'maxSize' => $this->maxSize / 1024,
+            'url'               => $this->uploadUrl,
+            'name'              => $this->uploadParameter,
+            'maxSize'           => $this->maxSize / 1024,
             'allowedExtensions' => explode(', ', $this->extensions),
-            'size_error_text' => Yii::t('jcrop', 'File Size Error', ['size' => $this->maxSize / (1024 * 1024)]),
-            'ext_error_text' => Yii::t('jcrop', 'File Extension Error', ['formats' => $this->extensions]),
-            'accept' => 'image/*'
+            'size_error_text'   => Yii::t('jcrop', 'File Size Error', ['size' => $this->maxSize / (1024 * 1024)]),
+            'ext_error_text'    => Yii::t('jcrop', 'File Extension Error', ['formats' => $this->extensions]),
+            'accept'            => 'image/*'
         ];
-        if ($this->onCompleteJcrop)
+        if ($this->onCompleteJcrop) {
             $settings['onCompleteJcrop'] = $this->onCompleteJcrop;
+        }
         $view->registerJs(
             'jQuery("#' . $this->options['id'] . '").parent().find(".new-photo-area").cropper(' . Json::encode($settings) . ', ' . $this->thumbnailWidth . ', ' . $this->thumbnailHeight . ');',
             $view::POS_READY
         );
     }
+
     /**
      * Register widget translations.
      */
@@ -72,10 +83,10 @@ class Jcrop extends InputWidget
     {
         if (!isset(Yii::$app->i18n->translations['jcrop']) && !isset(Yii::$app->i18n->translations['jcrop/*'])) {
             Yii::$app->i18n->translations['jcrop'] = [
-                'class' => 'yii\i18n\PhpMessageSource',
-                'basePath' => '@developit/jcrop/messages',
+                'class'            => 'yii\i18n\PhpMessageSource',
+                'basePath'         => '@developit/jcrop/messages',
                 'forceTranslation' => true,
-                'fileMap' => [
+                'fileMap'          => [
                     'jcrop' => 'jcrop.php'
                 ]
             ];
