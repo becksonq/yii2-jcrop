@@ -19,6 +19,7 @@ use \Yii\helpers\Html;
             <div><?= Yii::t('jcrop', 'Or'); ?></div>
             <div><?= Html::button(Yii::t('jcrop', 'Select Photo'), ['class' => 'btn btn-primary']) ?></div>
         </div>
+        <small class="form-text text-muted"><?= Yii::t('jcrop', 'File size cannot exceed 2 Gb.') ?></small>
     </div>
 
     <div class="cropper-buttons pb-3">
