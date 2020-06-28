@@ -1,6 +1,10 @@
 <?php
+
 namespace developit\jcrop\actions;
-use yii;
+
+use DeepCopy\f001\B;
+use Imagine\Image\Point;
+use Yii;
 use yii\base\Action;
 use yii\base\DynamicModel;
 use yii\base\InvalidConfigException;
@@ -10,16 +14,24 @@ use yii\web\UploadedFile;
 use yii\imagine\Image;
 use Imagine\Image\Box;
 use developit\jcrop\Jcrop;
+
+/**
+ * Class Upload
+ * @package developit\jcrop\actions
+ */
 class Upload extends Action
 {
     public $path;
     public $url;
     public $uploadParam = 'file';
     public $name;
-    public $maxSize = 2097152;
+    public $maxSize;
     public $extensions = 'jpeg, jpg, png, gif';
     public $width = 200;
     public $height = 200;
+    public $jpegQuality = 100;
+    public $pngCompressionLevel = 1;
+
     /**
      * @inheritdoc
      */
@@ -37,49 +49,55 @@ class Upload extends Action
             $this->path = rtrim(Yii::getAlias($this->path), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
         }
     }
+
     /**
      * @inheritdoc
      */
     public function run()
     {
         if (Yii::$app->request->isPost) {
+            $request = Yii::$app->request;
+            $this->maxSize = (int)$request->post('maxSize');
+            $width = $request->post('width', $this->width);
+            $height = $request->post('height', $this->height);
             $file = UploadedFile::getInstanceByName($this->uploadParam);
+            $saveOptions = [
+                'jpeg_quality'          => $request->post('jpegQuality', $this->jpegQuality),
+                'png_compression_level' => $request->post('pngCompressionLevel'),
+                $this->pngCompressionLevel
+            ];
+
             $model = new DynamicModel(compact($this->uploadParam));
             $model->addRule($this->uploadParam, 'image', [
-                'maxSize' => $this->maxSize,
-                'tooBig' => Yii::t('jcrop', 'File Size Error', ['size' => $this->maxSize / (1024 * 1024)]),
-                'extensions' => explode(', ', $this->extensions),
+                'maxSize'        => $this->maxSize,
+                'tooBig'         => Yii::t('jcrop', 'File Size Error', ['size' => $this->maxSize / (1024 * 1024)]),
+                'extensions'     => explode(', ', $this->extensions),
                 'wrongExtension' => Yii::t('jcrop', 'File Extension Error', ['formats' => $this->extensions])
             ])->validate();
+
             if ($model->hasErrors()) {
                 $result = [
                     'error' => $model->getFirstError($this->uploadParam)
                 ];
             } else {
-                if($this->name === null)
-                {
-                    $this->name = uniqid();
-                }
-                $model->{$this->uploadParam}->name = $this->name . '.jpg';
-                $request = Yii::$app->request;
-                $width = $request->post('width', $this->width);
-                $height = $request->post('height', $this->height);
+                $this->name === null ? $this->name = uniqid() : $model->{$this->uploadParam}->name = $this->name . '.jpg';
+
+                $image = Image::getImagine()->open($file->tempName . $request->post('filename'))->resize(new Box($request->post('imgWidth'),
+                    $request->post('imgHeight')));
                 $image = Image::crop(
-                    $file->tempName . $request->post('filename'),
+                    $image,
                     intval($request->post('w')),
                     intval($request->post('h')),
-                    [$request->post('x'), $request->post('y')]
-                )->resize(
-                    new Box($width, $height)
-                );
-                if ($image->save($this->path . $model->{$this->uploadParam}->name)) {
+                    [intval($request->post('x')), intval($request->post('y'))]
+                )->resize(new Box($width, $height));
+
+                if ($image->save($this->path . $model->{$this->uploadParam}->name, $saveOptions)) {
+                    $image = $this->path . $model->{$this->uploadParam}->name;
                     $result = [
                         'filelink' => $this->url . $model->{$this->uploadParam}->name . '?' . microtime()
                     ];
                 } else {
-                    $result = [
-                        'error' => Yii::t('jcrop', 'Can Not Upload File')]
-                    ;
+                    $result = ['error' => Yii::t('jcrop', 'Can Not Upload File')];
                 }
             }
             Yii::$app->response->format = Response::FORMAT_JSON;
